@@ -1,0 +1,17 @@
+# Repomix outputs
+repomix-output.xml
+repomix-output.txt
+repomix-output.json
+repomix-output.md
+repomix*
+
+# Submission Archives
+*.zip
+*.tar.gz
+
+# Environment and Keys
+.env
+*.key
+*.pem
+
+#
