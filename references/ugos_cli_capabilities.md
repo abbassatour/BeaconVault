@@ -1,59 +1,94 @@
 
+# UGOS System Capabilities & Architectural Mapping
 
-# UGOS System CLI & Capability Primitives
-
-This reference specifies the planned UGOS command-line interface (CLI) commands, container mounts, and system permissions utilized by the `beacon-sovereign-vault` Skill.
+This document specifies the public UGOS CLI capabilities and child expert mappings utilized by `beacon-vault` as defined in the official capability catalog.
 
 ---
 
-## 1. Storage Volume Architecture
+## 1. Domain to Sub-Agent Mapping
 
-The skill operates within a sandboxed, dedicated user share volume:
+The parent Skill coordinates workflow delegation across specialized sub-agents registered in the catalog:
+
+| Domain              | Catalog CLI         | Registered Agent           | Primary Actions                                              |
+| :------------------ | :------------------ | :------------------------- | :----------------------------------------------------------- |
+| **file**      | `ug-filesystem`   | `file-agent`             | `find`, `ls`, `mkdir`, `cpmv`                        |
+| **document**  | `ug-document`     | `document-agent`         | `extract`, `qa`, `metadata`                            |
+| **album**     | `ug-photo`        | `photo-agent`            | `vision-ocr`, `vision-vlm`, `search-picture`           |
+| **knowledge** | `ug-knowledge`    | `knowledge-agent`        | `audio-transcription`, `save-text`, `collect-evidence` |
+| **monitor**   | `ug-surveillance` | `security-monitor-agent` | `event-timeline`, `identity-resolve`, `event-evidence` |
+
+---
+
+## 2. Ingestion Topology
+
+All sensory data and inspection captures are organized within categorized application workspaces on the NAS:
 
 ```text
-/volume1/BeaconVault/
+BeaconVault/
 ├── documents/
 │   ├── prescriptions/
-│   ├── financial_bills/
-│   └── correspondence/
+│   └── financial_bills/
 ├── perimeter_security/
 │   ├── snapshots/
-│   └── ring_event_logs/
+│   └── event_logs/
 ├── voice_memos/
-│   ├── raw_audio/
-│   └── transcriptions/
-└── emergency_blackbox/
-    ├── sos_audit_trail.jsonl
-    └── gps_telemetry/
+│   ├── audio_recordings/
+│   └── transcripts/
+└── emergency_audit/
+    └── telemetry_trail/
 ```
 
 ---
 
-## 2. UGOS CLI Commands Executed by Agent
+## 3. Sub-Agent Capability Scope
 
-### A. Storage & File System Primitives
+Child experts invoke the following catalog capabilities during delegated task execution:
 
-- `ugos-storage create-dir --path "/volume1/BeaconVault/documents"`: Creates categorized storage directories with access permissions restricted to authorized household users.
-- `ugos-storage write-file --path "<target_path>" --atomic`: Atomically writes incoming images and audio streams with SHA-256 integrity verification.
-- `ugos-storage get-quota --volume "/volume1"`: Queries current disk headroom to trigger automated archival compression when utilization exceeds 85%.
+### A. File Discovery & Organization (`file-agent`)
 
-### B. AI Engine & Vector Processing Primitives
+- **Capability:** `ug-filesystem`
+- **Actions:**
+  - `find`: Searches input drop zones for newly received assistive captures and audio recordings.
+  - `ls`: Inspects directory contents to verify target files and permissions before processing.
+  - `mkdir`: Creates categorized archive directories for processed assets.
+  - `cpmv`: Moves verified inspection files into permanent archive folders after user approval.
 
-- `ugos-ai embedding create --model "bge-small-en-v1.5" --input "<extracted_text>"`: Generates on-device dense vector embeddings for indexed documents and audio transcripts.
-- `ugos-ai vision inference --model "internvl-chat-2b" --image "<snapshot_path>"`: Analyzes camera captures locally on the NAS NPU/GPU to describe visual layouts without transmitting home footage to third-party APIs.
+### B. Document Intelligence (`document-agent`)
 
-### C. Knowledge Base (RAG) Management Primitives
+- **Capability:** `ug-document`
+- **Actions:**
+  - `extract`: Extracts structured fields including expiration dates, dosages, warnings, and invoice amounts using schemas such as `medical-report` or `invoice`.
+  - `qa`: Resolves user inquiries regarding printed correspondence, utility bills, and formal notices.
+  - `metadata`: Determines page counts and structural properties of scanned PDF materials.
 
-- `ugos-knowledge index add --kb "BeaconAssistiveKB" --doc-id "<uuid>" --vector "<embedding>" --metadata "<json>"`: Adds extracted knowledge chunks to the local vector index.
-- `ugos-knowledge search --kb "BeaconAssistiveKB" --query "<user_voice_query>" --top-k 3`: Retrieves contextually relevant snippets to formulate real-time answers for the user's audio screen reader.
+### C. Vision Inspection (`photo-agent`)
+
+- **Capability:** `ug-photo`
+- **Actions:**
+  - `vision-vlm`: Analyzes handheld object captures using visual language understanding to identify physical items.
+  - `vision-ocr`: Extracts raw textual content from packaged containers and product labels.
+  - `search-picture`: Locates historical inspection frames by date, detected label, or location criteria.
+
+### D. Speech Transcription & Knowledge Store (`knowledge-agent`)
+
+- **Capability:** `ug-knowledge`
+- **Actions:**
+  - `audio-transcription`: Converts speech recordings into structured multi-speaker text transcripts.
+  - `save-text`: Writes finalized transcription records and synthesized notes into verified files.
+  - `collect-evidence`: Retrieves indexed context to formulate answers for user accessibility queries.
+
+### E. Perimeter Safety Monitoring (`security-monitor-agent`)
+
+- **Capability:** `ug-surveillance`
+- **Actions:**
+  - `event-timeline`: Queries surveillance logs filtered by detection topics such as `Human` or `Package`.
+  - `identity-resolve`: Analyzes camera events to identify recognized family members versus strangers.
+  - `event-evidence`: Retrieves visual snapshot references and motion telemetry for audit trail verification.
 
 ---
 
-## 3. Network Daemon Configuration
+## 4. Execution Principles
 
-The skill registers a lightweight local listener service:
-
-- **Protocol:** Authenticated WebSockets over HTTP/1.1 (`/beacon_sync`)
-- **Port:** `8492` (Auto-incrementing fallback: `8492–8499`)
-- **Transport Security:** Cryptographic challenge-response handshake based on EIP-55 Ethereum Public Key / W3C DID addresses.
-- **Latency Budget:** Sub-10ms local response time for real-time mobile and TV synchronization.
+1. **Strict Delegation:** The parent Skill issues delegation tasks using verified identifiers without invoking low-level primitives directly.
+2. **Sequential Flow:** Output artifacts from discovery steps are verified before passing references to downstream analysis agents.
+3. **Approval Boundary:** Destructive operations, relocation tasks, or external emergency triggers require explicit user confirmation (`waiting_approval`).
